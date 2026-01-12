@@ -15,7 +15,7 @@
 
 ### 准备工作 
 
-一、安装依赖
+**一、安装依赖**
 
 ```bash
 sudo apt install android-tools-adb
@@ -29,7 +29,7 @@ conda install pinocchio==3.2.0 casadi==3.6.7 -c conda-forge
 pip install meshcat rospkg pyyaml pure-python-adb piper-sdk
 ```
 
-二、开启开发者模式（必须步骤，否则无法安装第三方APK）
+**二、开启开发者模式（必须步骤，否则无法安装第三方APK）**
 
 开始前请确认自己 quest 设备中是否有开发者模式，请参考如下步骤查找：
 
@@ -48,7 +48,7 @@ pip install meshcat rospkg pyyaml pure-python-adb piper-sdk
 3、在头显中允许未知来源
 → 头显内进入 设置 → 系统 → 开发者选项 → 开启 "未知来源"权限。
 
-三、设置头显休眠时长
+**三、设置头显休眠时长**
 
 需要将休眠时长设置最大，以免头显息屏导致无法输出位姿数据。
 
@@ -82,8 +82,6 @@ adb install 路径/teleop-debug.apk
   - <https://www.bilibili.com/opus/267781439861047911>
   - 其中的SideQuest app界面会更新，但是一定会有安装apk功能 <https://github.com/SideQuestVR/SideQuest/releases>
 
-
-
 3、将代码克隆下来并编译：
 
 ```bash
@@ -113,6 +111,12 @@ catkin_make
           filename="/home/<your name>/questVR_ws/src/Piper_ros/src/piper_description/meshes/base_link.STL" />
 </geometry>
 ```
+
+**四、使用USB-typeC线将电脑与quest设备连接**
+
+默认是使用有线连接，因为有线连接能保证数据传输的速率以及做到低延迟，如果有无线连接的需求，点击跳转至[无线连接](#无线连接)查看。
+
+
 
 ### 代码架构说明
 
@@ -298,7 +302,71 @@ buttons: {'A': False, 'B': False, 'RThU': True, 'RJ': False, 'RG': False, 'RTr':
 
 
 
+## 无线连接
 
+### 第一阶段：准备工作（必须处于同一局域网）
 
+- **同一 Wi-Fi**：确保你的电脑和 Quest 连接在同一个路由器的 Wi-Fi 下。
+- **5GHz 优先**：为了降低延迟和数据丢包，强烈建议连接 **5G 频段** 的 Wi-Fi，而不是 2.4G。
+- **电脑端工具**：确保电脑已安装 `adb` 工具。
 
+### 第二阶段：首次连接与激活无线模式
 
+Quest 在重启后默认会关闭无线调试端口，因此**每次 Quest 彻底关机重启后**，你通常需要执行一次以下步骤：
+
+1. **USB 线连接**：用 USB 线将 Quest 连接到电脑。
+
+2. **授权设备**：戴上头显，如果弹出“允许 USB 调试吗？”，勾选“始终允许”并确认。
+
+3. **开启监听端口**：在电脑终端输入以下命令：
+
+   ```bash
+   adb tcpip 5555
+   ```
+
+   *如果成功，终端会返回：`restarting in TCP mode port: 5555`。*
+
+4. **拔掉 USB 线**：现在你可以断开物理连线了。
+
+### 第三阶段：获取 IP 并建立无线握手
+
+1. **查询 Quest IP 地址**：
+
+   - **方法 A (头显内)**：设置 -> Wi-Fi -> 点击已连接的 Wi-Fi -> 详情 -> 记录下头显的 IP 地址。
+
+   - **方法 B (电脑命令行)**：
+
+     ```bash
+     adb shell ip route
+     ```
+
+     *查看 `wlan0` 对应的 `src` 后面的数字。*
+
+2. **手动建立无线连接**（这一步能确保 Python 脚本顺利运行）：
+
+   ```bash
+   adb connect <你的Quest_IP>:5555
+   # 示例：adb connect 192.168.1.101:5555
+   ```
+
+   *看到 `connected to ...` 说明无线链路已打通。*
+
+### 第四阶段：Python 代码调用
+
+在你的代码中，直接填入该 IP 即可：
+
+```Python
+from oculus_reader import OculusReader
+
+# 确保这里的 IP 与上面 adb connect 的 IP 完全一致
+self.oculus_reader = OculusReader(ip_address='192.168.1.101') 
+```
+
+### 第五阶段：运行程序
+
+`oculus_reader` 依赖于安装在 Quest 里的一个 APK 文件来抓取传感器数据。
+
+1. **确保已安装 APK**
+2. **启动应用程序：
+   - 参考[软件启动](#软件启动)开启动程序。
+   - 程序启动后可能会弹出“允许 USB 调试吗？”，勾选“始终允许”并确认。
