@@ -1,0 +1,42 @@
+FROM osrf/ros:noetic-desktop-full
+
+SHELL ["/bin/bash", "-lc"]
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV MAMBA_ROOT_PREFIX=/opt/micromamba
+
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends \
+    ca-certificates \
+    curl \
+    bzip2 \
+    iproute2 \
+    ethtool \
+    can-utils \
+    python3-pip \
+  && rm -rf /var/lib/apt/lists/*
+
+# micromamba (static binary) for fast conda-forge installs
+# The endpoint returns a tarball containing bin/micromamba.
+RUN curl -fsSL https://micro.mamba.pm/api/micromamba/linux-64/latest \
+  | tar -xj -C /usr/local/bin --strip-components=1 bin/micromamba \
+  && chmod +x /usr/local/bin/micromamba
+
+# Create a conda env for heavy numeric deps (Pinocchio/CasADi).
+# Note: conda-forge no longer provides these for Python 3.8, so we use 3.9.
+RUN micromamba create -y -n vt -c conda-forge \
+    python=3.9 \
+    pinocchio=3.2.0 \
+    casadi=3.6.7 \
+    numpy \
+  && micromamba clean -a -y
+
+ENV PATH=/opt/micromamba/envs/vt/bin:$PATH
+
+RUN eval "$(micromamba shell hook -s bash)" \
+  && micromamba activate vt \
+  && pip3 install --no-cache-dir -q \
+    meshcat \
+    rospkg \
+    pyyaml \
+    pure-python-adb \
+    piper-sdk
