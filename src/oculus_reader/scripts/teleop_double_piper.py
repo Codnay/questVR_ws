@@ -251,7 +251,7 @@ class Arm_IK:
             is_collision = self.check_self_collision(sol_q, gripper)
             dist = self.get_dist(sol_q, target_pose[:3, 3])
             # print("dist:", dist)
-            return sol_q, tau_ff, is_collision
+            return sol_q, tau_ff, not is_collision
 
         except Exception as e:
             print(f"ERROR in convergence, plotting debug info.{e}")
@@ -313,13 +313,20 @@ class VR:
             pin.Quaternion(q[3], q[0], q[1], q[2]),
             np.array([x, y, z]),
         )
-        sol_q, tau_ff, is_collision = self.R_inverse_solution.ik_fun(target.homogeneous,0)
+        sol_q, tau_ff, collision_free = self.R_inverse_solution.ik_fun(target.homogeneous,0)
         # print("result:", sol_q)
+
+        if sol_q is None:
+            print("\33[31m-------------------       Right arm IK failed (no solution)       -----------------------------\033[0m")
+            return
+
+        if b and not collision_free:
+            print("\33[31m-------------------       Right arm self-collision!!!       -----------------------------\033[0m")
+            return
         
         if  b :
             self.piper_control.right_joint_control_piper(sol_q[0],sol_q[1],sol_q[2],sol_q[3],sol_q[4],sol_q[5],gripper)
-        if is_collision :
-            print("\33[31m-------------------       Robotic arm self-collision!!!       -----------------------------\033[0m") 
+        # If deadman is not held, we intentionally do not command the arm.
 
     def L_get_ik_solution(self, x,y,z,roll,pitch,yaw,gripper,b):
         
@@ -328,13 +335,20 @@ class VR:
             pin.Quaternion(q[3], q[0], q[1], q[2]),
             np.array([x, y, z]),
         )
-        sol_q, tau_ff, is_collision = self.L_inverse_solution.ik_fun(target.homogeneous,0)
+        sol_q, tau_ff, collision_free = self.L_inverse_solution.ik_fun(target.homogeneous,0)
         # print("result:", sol_q)
+
+        if sol_q is None:
+            print("\33[31m-------------------       Left arm IK failed (no solution)       -----------------------------\033[0m")
+            return
+
+        if b and not collision_free:
+            print("\33[31m-------------------       Left arm self-collision!!!       -----------------------------\033[0m")
+            return
         
         if  b :
             self.piper_control.left_joint_control_piper(sol_q[0],sol_q[1],sol_q[2],sol_q[3],sol_q[4],sol_q[5],gripper)
-        if is_collision :
-            print("\33[31m-------------------       Robotic arm self-collision!!!       -----------------------------\033[0m") 
+        # If deadman is not held, we intentionally do not command the arm.
 
     def right_handle_pose_callback(self, msg):
         # print(msg.pose.position.x, msg.pose.position.y, msg.pose.position.z)
