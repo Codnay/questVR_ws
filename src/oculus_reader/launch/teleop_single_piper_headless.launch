@@ -1,7 +1,6 @@
 <launch>
 
   <arg name="can_port" default="can0" />
-  <arg name="use_rviz" default="true" />
 
   <include file="$(find piper)/launch/start_single_piper.launch">
     <arg name="can_port" value="$(arg can_port)" />
@@ -11,6 +10,4 @@
 
   <node name="pub_pose_node" pkg="oculus_reader" type="pub_pose.py" output="screen" />
 
-  <node if="$(arg use_rviz)" name="rviz" pkg="rviz" type="rviz" args="-d $(find oculus_reader)/config/oculus_reader.rviz" />
-  
 </launch>

@@ -300,6 +300,7 @@ class VR:
         time.sleep(0.5)
 
         self.base_RR = [0.19, 0.0, 0.2, 0, 0, 0]
+        self._prev_right_grip = 0.0
         # 订阅回调
         rospy.Subscriber('/right_handle_pose', PoseStamped, self.handle_pose_callback, queue_size=1)
         
@@ -330,16 +331,21 @@ class VR:
 
         RR = [self.x,self.y,self.z,self.roll,self.pitch,self.yaw]
             
-        if buttons['A'] == True :
-            # 按下A键后，机械臂回到初始点位并且记录 右 坐标原点
+        # Quest 3/3S builds may not emit A/B in the log stream.
+        # Use rightGrip as a "deadman" and a full-squeeze edge as a re-zero.
+        right_grip = float(buttons.get('rightGrip', (0.0,))[0])
+        if right_grip > 0.95 and self._prev_right_grip <= 0.95:
+            # Re-zero: reset arm pose and record current controller pose as base.
             self.piper_control.init_pose()
             self.base_RR = [self.x,self.y,self.z,self.roll,self.pitch,self.yaw]
+        self._prev_right_grip = right_grip
                     
         RR_ = calc_pose_incre(self.base_RR,RR)
         
-        r_gripper_value = buttons['rightTrig'][0] * 0.07 
-        # 按下B键后，开始遥操作
-        self.get_ik_solution(RR_[0],RR_[1],RR_[2],RR_[3],RR_[4],RR_[5],r_gripper_value,buttons['B'])
+        r_gripper_value = float(buttons.get('rightTrig', (0.0,))[0]) * 0.07
+        # Deadman: squeeze right grip to start teleop
+        deadman = right_grip > 0.20
+        self.get_ik_solution(RR_[0],RR_[1],RR_[2],RR_[3],RR_[4],RR_[5],r_gripper_value,deadman)
             
 
 if __name__ == '__main__':
